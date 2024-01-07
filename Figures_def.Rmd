@@ -1,0 +1,408 @@
+---
+title: "Figures"
+author: "Selina Lepori"
+date: "2022-09-06"
+output: html_document
+---
+
+```{r}
+library(ggplot2)
+library(datetime)
+library(tidyr)
+library(readxl)
+library(ggpubr)
+library(MASS)
+library(MuMIn)
+library(agricolae)
+library(stringr)
+library(nlme)
+library(stats)
+library(car)
+require(vegan)
+require(grid)
+library(cowplot)
+library(readr)
+library(scales)
+```
+#######################################################################################################################
+Read data
+```{r}
+micro <- read_excel("Masterfile.xlsx", range = "A1:CY33")
+
+#put together the two independent variables
+micro$com_moist <- str_c(micro$Community, '.', micro$moist)
+
+##make separate files per Community
+BFcomplex <- subset(micro, Community == "BFcomplex")
+BFsimple <- subset(micro, Community == "BFsimple")
+Bonly <- subset(micro, Community == "Bonly")
+Fonly <- subset(micro, Community == "Fonly")
+```
+
+Function for Boxplots
+```{r}
+fct_boxplot <- function(y_of_choice, y_label, ymax, x_label, with_moisture=TRUE, y_log=TRUE, desired_ticks) {
+  
+  if (with_moisture==FALSE) {
+    geom_boxplot = geom_boxplot(aes(x = Community, y = y_of_choice, fill = Community))
+    labs = labs(y = y_label, x = x_label) 
+  }
+  else {
+    geom_boxplot = geom_boxplot(aes(x = Community, y = y_of_choice, fill = Community, linetype = Treatment))
+    labs = labs(y = y_label, x = x_label, linetype = "Moisture Treatment")
+  }
+  
+  if (y_log==FALSE) {
+    y_log = scale_y_continuous()
+  }
+  else { 
+    y_log = scale_y_continuous(breaks = log(desired_ticks), labels = desired_ticks)
+    y_of_choice = log(y_of_choice)
+  }
+  
+
+  gg_boxplot <- ggplot(data = micro) +
+  geom_boxplot +
+  labs +
+  scale_fill_manual(values = c("#CC6666", "#C4961A", "#009E73", "#D16103"), guide = "none") +
+  ylim(0, ymax) +
+  y_log +
+  theme_bw()  +
+  theme(legend.position = "none", axis.title = element_text(size = 10),
+        axis.title.x=element_blank(), legend.text = element_text(size = 10),
+        legend.title = element_text(size = 10))
+  return(gg_boxplot)
+}
+
+fct_boxplot_moisture <- function(y_of_choice, y_label, ymax, x_label) {
+  gg_boxplot <- ggplot(data = micro) +
+  geom_boxplot(aes(x = Treatment, y = y_of_choice, fill = Community)) +
+  labs(y = y_label, x = x_label) +
+  facet_wrap(~Community) +
+  scale_fill_manual(values = c("#CC6666", "#C4961A", "#009E73", "#D16103"), guide = "none") +
+  ylim(0, ymax) +
+  stat_compare_means(method = "t.test", aes(x = Treatment, y = log(y_of_choice)), label.x = 1, label.y = log(11000)) +
+  theme_bw()  +
+  theme(legend.position = "none", axis.title = element_text(size = 10),
+        legend.text = element_text(size = 10), legend.title = element_text(size = 10))
+  return(gg_boxplot)
+}
+```
+
+Tukey Test Function
+```{r}
+fct_tukey <- function(y_of_choice, with_moisture=TRUE) {
+  
+  if (with_moisture==FALSE) {
+    parametres = micro$Community
+  }
+  else {
+    parametres = micro$com_moist
+  }
+  
+  aov <- aov(data=micro, log(y_of_choice) ~ factor(parametres))
+  summary(aov)
+
+  df<-df.residual(aov)
+  MSerror<-deviance(aov)/df
+  Tukey_CM<-HSD.test(log(y_of_choice), parametres, df, MSerror, group=TRUE)
+  return(Tukey_CM)
+}
+```
+
+Function Scatterplot
+```{r}
+fct_scatterplot <- function(y_of_choice, ylabel, x_of_choice, xlabel, reg_line, desired_ticks) {
+  gg_scatterplot <-
+    ggplot(data = micro, aes(y = log(y_of_choice), x = x_of_choice, colour = Community)) +
+    geom_point(size = 3) +
+    scale_colour_manual(values = c("#CC6666", "#C4961A", "#009E73", "#D16103"), guide = "none") +
+    facet_grid(~Community, labeller =
+                 labeller(Community = c("BFcomplex" = "(Previous) BFcomplex",
+                                        "BFsimple" = "(Previous) BFsimple",
+                                        "Bonly" = "(Previous) Bonly",
+                                        "Fonly" = "(Previous) Fonly"))) +
+    ylim(0, NA) +
+    reg_line +
+    labs(y = ylabel, x = xlabel) +
+    scale_y_continuous(
+      breaks = log(desired_ticks),
+      labels = desired_ticks) +
+    stat_cor(data = micro,
+             aes(y = log(y_of_choice), x = x_of_choice,
+                 label=paste(..rr.label..,..p.label.., sep = "~`,`~")),
+             colour = "black") +
+    theme_bw() +
+    theme(legend.position = "none", axis.title.y = element_text(size = 7), axis.title.x = element_text(size = 10),
+          legend.text = element_text(size = 10), legend.title = element_text(size = 10))
+  return(gg_scatterplot)
+}
+```
+
+Cumulative Respiration: Boxplot
+```{r}
+gg_cum_C_h1 = fct_boxplot(y_of_choice = micro$cum_C_h1_ng, y_label = expression(paste("Cumulative Respiration (ng C soil g"^"-1", " h"^"-1",")")), ymax = NA, x_label = "Community", with_moisture=FALSE, y_log=FALSE, desired_ticks=NA)
+
+gg_cum_C_h1_moisture = fct_boxplot_moisture(micro$cum_C_h1_ng, expression(paste("Cumulative Respiration Rate (ng C soil g"^"-1", "h"^"-1",")")), NA, "Moisture Treatment")
+
+gg_cum_resp <- ggarrange(gg_cum_C_h1, gg_cum_C_h1_moisture, nrow=1, ncol=2, labels = c("A", "B"))
+
+fct_tukey(micro$cum_C_h1_ng, with_moisture = FALSE)
+
+ggsave("gg_cum_C_h_FMSOC_20231230.png", plot = gg_cum_resp, dpi=1200)
+```
+
+AAE
+```{r}
+gg_AAE = fct_boxplot(y_of_choice = micro$AAE_total_perc, y_label = 'Amino Sugar Accumulation Efficiency (AAE (%))', ymax = NA, x_label = "Community", with_moisture=FALSE, y_log=FALSE, desired_ticks=NA)
+
+fct_tukey(micro$AAE_total_perc, with_moisture=FALSE)
+
+ggsave("gg_AAE_20231230.png", plot = gg_AAE, width=16, height=13, units="cm", dpi=1200)
+```
+
+
+CUE Plot
+```{r}
+desired_ticks_resp = c(0, 5000, 20000)
+desired_ticks_growth = c(0, 100, 300)
+desired_ticks_CUE = c(0, 10, 30)
+
+gg_CUE <- ggarrange(
+  fct_boxplot(y_of_choice = micro$resp_h1, y_label = expression(paste("Respiration\n(ng C soil g"^"-1", " h"^"-1",")")), ymax = NA, x_label = NA, desired_ticks = desired_ticks_resp),
+  fct_boxplot(y_of_choice = micro$growth1, y_label = expression(paste("Growth\n(ng C soil g"^"-1", " h"^"-1",")")), ymax = NA, x_label = NA,  desired_ticks = desired_ticks_growth),
+  fct_boxplot(y_of_choice = micro$CUE1, y_label = "\nCUE (%)", ymax = NA, x_label = NA, desired_ticks = desired_ticks_CUE),
+  nrow = 3, ncol = 1, heights = 1, align = "v", common.legend = TRUE, legend = "bottom", labels = c("A", "B", "C"))
+
+# ggsave("gg_CUE_FMSOC_20231229.png", plot = gg_CUE, width=16, height=13, units="cm", dpi=1200)
+
+#Tukey Test
+fct_tukey(micro$resp_h1)
+fct_tukey(micro$growth1)
+fct_tukey(micro$CUE1)
+```
+
+Plot bacterial, fungal and total AS
+```{r}
+# gg_AS2 <- ggarrange(
+#   fct_boxplot(micro$MurN_C2, expression(paste("Bacterial (µg C g soil"^"-1",")")), 20, "Community", y_log=FALSE, desired_ticks = NA),
+#   fct_boxplot(micro$GlcN_f_C2, expression(paste("Fungal (µg C g soil"^"-1",")")), NA, "Community", y_log=FALSE, desired_ticks = NA),
+#   fct_boxplot(micro$AS_C2, expression(paste("Total (μg C soil g"^"-1",")")), NA, "Community", y_log=FALSE, desired_ticks = NA),
+#   nrow = 3, ncol = 1, heights = 1, align = "v", common.legend = TRUE, legend = "bottom", labels = c("E", "F", "G"))
+# 
+# ggsave("gg_AS2_20231230.png", plot = gg_AS2, width=16, height=13, units="cm", dpi=1200)
+
+#Tukey Test
+# fct_tukey(micro$MurN_C2)
+# fct_tukey(micro$GlcN_f_C2)
+fct_tukey(micro$AS_C2, with_moisture=FALSE)
+```
+
+
+Plot all AS
+```{r}
+gg_AS3 <- ggarrange(
+  fct_boxplot(micro$GlcN_C2, expression(paste("GlcN (μg C soil g"^"-1",")")), NA, "Community", y_log=FALSE, desired_ticks = NA),
+  fct_boxplot(micro$ManN_C2, expression(paste("ManN (μg C soil g"^"-1",")")), NA, "Community", y_log=FALSE, desired_ticks = NA),
+  fct_boxplot(micro$GalN_C2, expression(paste("GalN (μg C soil g"^"-1",")")), NA, "Community", y_log=FALSE, desired_ticks = NA),
+  fct_boxplot(micro$MurN_C2, expression(paste("MurN (μg C soil g"^"-1",")")), NA, "Community", y_log=FALSE, desired_ticks = NA),
+  nrow = 2, ncol = 2, common.legend = TRUE, legend = "bottom", labels = c("A", "B", "C", "D"))
+
+# ggsave("gg_AS3_20231230.png", plot = gg_AS3, width=16, height=13, units="cm", dpi=1200)
+
+#Tukey Test
+fct_tukey(micro$GlcN_C2)
+fct_tukey(micro$ManN_C2)
+fct_tukey(micro$GalN_C2)
+fct_tukey(micro$MurN_C2)
+```
+
+#######################################################################################################################
+Amino Sugars
+Plot AS (FMSOC) with CUE, resp CUE, Growth CUE, Cumulative C (PSOC)
+```{r}
+desired_ticks_cum_resp <- c(0, 500, 1000, 2000, 4000, 8000)
+desired_ticks_growth <- c(0, 10, 25, 100, 300)
+desired_ticks_resp <- c(0, 200, 1000, 10000)
+desired_ticks_CUE <- c(0, 1, 5, 10, 20, 40)
+
+p.vals = sapply(unique(micro$Community), function(i) {
+  coef(summary(lm(log(cum_C_h2_ng) ~ AS_C2, data=micro[micro$Community==i, ])))[2,4]
+})
+reg_line_cum_C_h2 <- geom_smooth(data=micro[micro$Community %in% names(p.vals)[p.vals < 0.05],], 
+                        aes(x=AS_C2, y=log(cum_C_h2_ng), colour=Community), method='lm',
+               colour = "#3366FF")
+
+p.vals = sapply(unique(micro$Community), function(i) {
+  coef(summary(lm(log(growth2) ~ AS_C2, data=micro[micro$Community==i, ])))[2,4]
+})
+reg_line_growth2<- geom_smooth(data=micro[micro$Community %in% names(p.vals)[p.vals < 0.05],], 
+                        aes(x=AS_C2, y=log(growth2), colour=Community), method='lm',
+               colour = "#3366FF")
+
+p.vals = sapply(unique(micro$Community), function(i) {
+  coef(summary(lm(log(resp_h2) ~ AS_C2, data=micro[micro$Community==i, ])))[2,4]
+})
+reg_line_resp_h2<- geom_smooth(data=micro[micro$Community %in% names(p.vals)[p.vals < 0.05],], 
+                        aes(x=AS_C2, y=log(resp_h2), colour=Community), method='lm',
+               colour = "#3366FF")
+
+p.vals = sapply(unique(micro$Community), function(i) {
+  coef(summary(lm(log(CUE2) ~ AS_C2, data=micro[micro$Community==i, ])))[2,4]
+})
+reg_line_CUE2<- geom_smooth(data=micro[micro$Community %in% names(p.vals)[p.vals < 0.05],], 
+                        aes(x=AS_C2, y=log(CUE2), colour=Community), method='lm',
+               colour = "#3366FF")
+
+gg_AS <- ggarrange(
+  fct_scatterplot(micro$cum_C_h2_ng, expression(paste("Cumulative Respiration (ng C g"^"-1", " h"^"-1",")")), micro$AS_C2, "", reg_line_cum_C_h2, desired_ticks_cum_resp),
+  fct_scatterplot(micro$growth2, expression(paste("Growth (ng C soil g"^"-1", " h"^"-1",")")), micro$AS_C2, "", reg_line_growth2, desired_ticks_growth),
+  fct_scatterplot(micro$resp_h2, expression(paste("Respiration (ng C soil g"^"-1", " h"^"-1",")")), micro$AS_C2, "", reg_line_resp_h2, desired_ticks_resp),
+  fct_scatterplot(micro$CUE2, "CUE (%) PSOC", micro$AS_C2,
+                       expression(paste("Total Amino Sugars (μg C soil g"^"-1",") FMSOC")),
+                                        reg_line_CUE2, desired_ticks_CUE), ncol = 1, nrow = 4)
+
+# ggsave("gg_AS_20230717.png", plot = gg_AS)
+```
+
+
+#######################################################################################################################
+Heatmap
+Read in data
+```{r, echo=FALSE}
+d <- read.csv("frame2_FMSOC_not_div_TOC.csv")
+
+d <- subset(d, select = -oldID)
+```
+
+modification of data
+```{r, echo=FALSE}
+##get relative signal at different temperatures rather than absolute
+d[,c(1:451)]<-decostand(d[,c(1:451)], MARGIN = 1, method="total")
+
+##separate FMSOC and PSOC
+FMSOC <- d[c(1:32),]
+```
+
+Separate by RE and other soil/microbial factors
+```{r, echo=FALSE}
+#FMSOC
+re_FM<-FMSOC[,c(1:451)]
+AS_FM<-FMSOC[,c(452:457)]
+Community_FM<-FMSOC[,c(458:461)]
+```
+
+loop through and determine spearman correlations and p-values between variables
+```{r}
+##FMSOC
+outframe_FM<-matrix(rep(NA,47100),ncol=4)
+
+fct <- function(FM) {
+  i<-1
+  for(temp in 1:ncol(re_FM)){
+    for(ofact in 1:ncol(FM)){
+      var1<-re_FM[,temp]
+      var2<-FM[,ofact]
+      corval<-cor.test(var1, var2, method = "spearman")
+      outframe_FM[i,]<-c(names(re_FM)[temp],names(FM)[ofact],corval$estimate, corval$p.value)
+      i<-i+1
+    }
+  }
+  return(outframe_FM)
+}
+
+outframe_FM_AS <- fct(FM = AS_FM)
+outframe_FM_Community <- fct(FM = Community_FM)
+```
+
+Reformat so the numbers are numbers and extra NAs are removed etc.
+```{r}
+##FMSOC
+fct <- function(outframe_FM) {
+  outframe_FM<-as.data.frame(outframe_FM)
+  names(outframe_FM)<-c("RockEvalTemp", "variable", "Spearmancorrelation", "pvalue")
+  outframe_FM$RockEvalTemp<-gsub("X", "", outframe_FM$RockEvalTemp)
+  outframe_FM$RockEvalTemp<-as.numeric(as.character(outframe_FM$RockEvalTemp))
+  outframe_FM$Spearmancorrelation<-as.numeric(as.character(outframe_FM$Spearmancorrelation))
+  outframe_FM$pvalue<-as.numeric(as.character(outframe_FM$pvalue))
+  outframe_FM<-subset(outframe_FM, !is.na(variable))
+  return(outframe_FM)
+}
+
+outframe_FM_AS <- fct(outframe_FM = outframe_FM_AS)
+outframe_FM_Community <- fct(outframe_FM = outframe_FM_Community)
+```
+
+Heatmap FMSOC
+```{r heatmap2, echo=FALSE, warning=FALSE}
+fct <- function(outframe_FM) {
+  outframe_FM$Spearmancorrelation_sig<-ifelse(outframe_FM$pvalue>=0.05,NA, outframe_FM$Spearmancorrelation)
+  
+  heatmap <- ggplot(outframe_FM, aes(x=RockEvalTemp, y=variable, fill=Spearmancorrelation_sig)) +
+    geom_tile() +
+    labs(x = "Temperature Rock-Eval Pyrolysis", y = "Variables",
+         fill = "Correlation") +
+    scale_fill_gradient2(low="red", mid="white", high="blue", na.value = "grey90") +
+    theme(axis.title = element_text(size = 10), legend.text = element_text(size = 10),
+          legend.title = element_text(size = 10))
+  
+  return(heatmap)
+}
+
+heatmap_AS <- fct(outframe_FM = outframe_FM_AS)
+heatmap_Community <- fct(outframe_FM = outframe_FM_Community)
+```
+
+#######################################################################################################################
+Physical Density
+```{r}
+#without dry treatment
+PD2 <- subset(micro, moist != "D")
+PD2_f <- subset(PD2, GlcN_f != 0)
+
+gg_PD <- ggplot(data = PD2) +
+  geom_point(aes(x = AS_abs, y = meso)) +
+  labs(y = "Mesodensity Fraction in %", x = expression(paste("Amino Sugars (soil g"^"-1",")"))) +
+  geom_smooth(method = lm, aes(x = AS_abs, y = meso), linetype = "dashed") +
+  stat_cor(data = PD2, aes(y = meso, x = AS_abs, label=paste(..rr.label.., ..p.label.., sep = "~`,`~")), colour = "black", label.y = 6.5) +
+  theme_bw() +
+  theme(axis.title = element_text(size = 10), legend.text = element_text(size = 10),
+        legend.title = element_text(size = 10))
+
+gg_PD_f <- ggplot(data = PD2_f) +
+  geom_point(aes(x = GlcN_f, y = meso)) +
+  labs(y = "Mesodensity Fraction in %", x = expression(paste("Fungal Amino Sugars (soil g"^"-1",")"))) +
+  geom_smooth(method = lm, aes(x = GlcN_f, y = meso)) +
+  stat_cor(data = PD2_f, aes(y = meso, x = GlcN_f, label=paste(..rr.label.., ..p.label.., sep = "~`,`~")), colour = "black", label.y = 6.3) +
+  theme_bw() +
+  theme(axis.title = element_text(size = 10), legend.text = element_text(size = 10),
+        legend.title = element_text(size = 10))
+
+PD_plot <- ggarrange(gg_PD + rremove("ylab"), gg_PD_f + rremove("ylab"), nrow=2)
+PD_plot <- annotate_figure(PD_plot, left = text_grob("Mesodensity Fraction in % (1.8-2.4 g/cc)", rot = 90, vjust = 1, size = 10))
+
+gg_heatmap_PD <- ggarrange(heatmap_AS, gg_PD, heatmap_Community, gg_PD_f, ncol=2, nrow=2, labels = c("A", "C", "B", "D"))
+
+# ggsave("gg_heatmap_PD_20231230.png", plot = gg_heatmap_PD, width=30, height=13, units="cm", dpi=1200)
+```
+
+#######################################################################################################################
+Variance Partitioning
+Look at the CUE (PSOC) and the variance explained by AS_C2, MBC1, A1+A2_PSOM, A4+A5_PSOM.
+```{r}
+rda_CUE2 <- vegan::rda(micro$growth2 ~ AS_C2 + MBC1 + Contrib.A1_2 + Contrib.A2_2 + Contrib.A4_2 + Contrib.A5_2, data = micro)
+#summary(rda_CUE2)
+anova(rda_CUE2, by="terms", perm.max=100)
+
+#rda_CUE2 <- step(rda_CUE2, direction = "backward")
+
+var_CUE2 <- varpart(micro$growth2, 
+                     ~ AS_C2,
+                     ~ MBC1,
+                     ~ Contrib.A1_2 + Contrib.A2_2,
+                     ~ Contrib.A4_2 + Contrib.A5_2,
+                     data = micro)
+var_CUE2
+#showvarparts(4)
+plot(var_CUE2, cutoff = 0.001, digits = 1, cex = 0.7)
+```
