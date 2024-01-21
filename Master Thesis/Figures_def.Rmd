@@ -69,9 +69,9 @@ fct_boxplot <- function(y_of_choice, y_label, ymax, x_label, with_moisture=TRUE,
   ylim(0, ymax) +
   y_log +
   theme_bw()  +
-  theme(legend.position = "none", axis.title = element_text(size = 10),
-        axis.title.x=element_blank(), legend.text = element_text(size = 10),
-        legend.title = element_text(size = 10))
+  theme(legend.position = "none", axis.title = element_text(size = 15),
+        axis.title.x=element_blank(), legend.text = element_text(size = 15),
+        legend.title = element_text(size = 15))
   return(gg_boxplot)
 }
 
@@ -84,8 +84,8 @@ fct_boxplot_moisture <- function(y_of_choice, y_label, ymax, x_label) {
   ylim(0, ymax) +
   stat_compare_means(method = "t.test", aes(x = Treatment, y = log(y_of_choice)), label.x = 1, label.y = log(11000)) +
   theme_bw()  +
-  theme(legend.position = "none", axis.title = element_text(size = 10),
-        legend.text = element_text(size = 10), legend.title = element_text(size = 10))
+  theme(legend.position = "none", axis.title = element_text(size = 15),
+        legend.text = element_text(size = 15), legend.title = element_text(size = 15))
   return(gg_boxplot)
 }
 ```
@@ -134,8 +134,8 @@ fct_scatterplot <- function(y_of_choice, ylabel, x_of_choice, xlabel, reg_line, 
                  label=paste(..rr.label..,..p.label.., sep = "~`,`~")),
              colour = "black") +
     theme_bw() +
-    theme(legend.position = "none", axis.title.y = element_text(size = 7), axis.title.x = element_text(size = 10),
-          legend.text = element_text(size = 10), legend.title = element_text(size = 10))
+    theme(legend.position = "none", axis.title.y = element_text(size = 7), axis.title.x = element_text(size = 15),
+          legend.text = element_text(size = 15), legend.title = element_text(size = 15))
   return(gg_scatterplot)
 }
 ```
@@ -290,7 +290,7 @@ Separate by RE and other soil/microbial factors
 #FMSOC
 re_FM<-FMSOC[,c(1:451)]
 AS_FM<-FMSOC[,c(452:457)]
-Community_FM<-FMSOC[,c(458:461)]
+# Community_FM<-FMSOC[,c(458:461)]
 ```
 
 loop through and determine spearman correlations and p-values between variables
@@ -313,7 +313,7 @@ fct <- function(FM) {
 }
 
 outframe_FM_AS <- fct(FM = AS_FM)
-outframe_FM_Community <- fct(FM = Community_FM)
+# outframe_FM_Community <- fct(FM = Community_FM)
 ```
 
 Reformat so the numbers are numbers and extra NAs are removed etc.
@@ -331,7 +331,7 @@ fct <- function(outframe_FM) {
 }
 
 outframe_FM_AS <- fct(outframe_FM = outframe_FM_AS)
-outframe_FM_Community <- fct(outframe_FM = outframe_FM_Community)
+# outframe_FM_Community <- fct(outframe_FM = outframe_FM_Community)
 ```
 
 Heatmap FMSOC
@@ -344,87 +344,85 @@ fct <- function(outframe_FM) {
     labs(x = "Temperature Rock-Eval Pyrolysis", y = "Variables",
          fill = "Correlation") +
     scale_fill_gradient2(low="red", mid="white", high="blue", na.value = "grey90") +
-    theme(axis.title = element_text(size = 10), legend.text = element_text(size = 10),
-          legend.title = element_text(size = 10))
+    theme(axis.title = element_text(size = 12), legend.text = element_text(size = 10),
+          legend.title = element_text(size = 10), axis.text = element_text(size=10))
   
   return(heatmap)
 }
 
 heatmap_AS <- fct(outframe_FM = outframe_FM_AS)
-heatmap_Community <- fct(outframe_FM = outframe_FM_Community)
+# heatmap_Community <- fct(outframe_FM = outframe_FM_Community)
 ```
 
 #######################################################################################################################
 Physical Density
 ```{r}
 #without dry treatment
-PD2 <- subset(micro, moist != "D")
+PD2 <- subset(micro, moist != "D" & Community != "BFsimple")
+#PD2 <- subset(PD2, Community != "BFsimple")
 PD2_f <- subset(PD2, GlcN_f != 0)
 
 gg_PD <- ggplot(data = PD2) +
-  geom_point(aes(x = AS_abs, y = meso)) +
-  labs(y = "Mesodensity Fraction in %", x = expression(paste("Amino Sugars (soil g"^"-1",")"))) +
-  geom_smooth(method = lm, aes(x = AS_abs, y = meso), linetype = "dashed") +
-  stat_cor(data = PD2, aes(y = meso, x = AS_abs, label=paste(..rr.label.., ..p.label.., sep = "~`,`~")), colour = "black", label.y = 6.5) +
+  geom_point(aes(x = meso, y = AS_abs, colour = Community)) +
+  scale_colour_manual(values = c("#CC6666", "#009E73", "#D16103"), guide = "none") +
+  labs(x = "Mesodensity Fraction in %", y = expression(paste("Total Amino Sugars (soil g"^"-1",")"))) +
+  geom_smooth(method = lm, aes(y = AS_abs, x = meso), linetype = "dashed") +
+  stat_cor(data = PD2, aes(x = meso, y = AS_abs, label=paste(..rr.label.., ..p.label.., sep = "~`,`~")), colour = "black", label.y = 300) +
   theme_bw() +
-  theme(axis.title = element_text(size = 10), legend.text = element_text(size = 10),
-        legend.title = element_text(size = 10))
+  theme(axis.title = element_text(size = 12), legend.text = element_text(size = 10),
+        legend.title = element_text(size = 10), axis.text = element_text(size=10))
 
 gg_PD_f <- ggplot(data = PD2_f) +
-  geom_point(aes(x = GlcN_f, y = meso)) +
-  labs(y = "Mesodensity Fraction in %", x = expression(paste("Fungal Amino Sugars (soil g"^"-1",")"))) +
-  geom_smooth(method = lm, aes(x = GlcN_f, y = meso)) +
-  stat_cor(data = PD2_f, aes(y = meso, x = GlcN_f, label=paste(..rr.label.., ..p.label.., sep = "~`,`~")), colour = "black", label.y = 6.3) +
+  geom_point(aes(y = GlcN_f, x = meso, colour = Community)) +
+  scale_colour_manual(values = c("#CC6666", "#D16103"), guide = "none") +
+  labs(x = "Mesodensity Fraction in %", y = expression(paste("Fungal Amino Sugars (soil g"^"-1",")"))) +
+  geom_smooth(method = lm, aes(y = GlcN_f, x = meso)) +
+  stat_cor(data = PD2_f, aes(x = meso, y = GlcN_f, label=paste(..rr.label.., ..p.label.., sep = "~`,`~")), colour = "black", label.y = 300) +
   theme_bw() +
-  theme(axis.title = element_text(size = 10), legend.text = element_text(size = 10),
-        legend.title = element_text(size = 10))
+  theme(axis.title = element_text(size = 12), axis.text = element_text(size=10))
 
-PD_plot <- ggarrange(gg_PD + rremove("ylab"), gg_PD_f + rremove("ylab"), nrow=2)
-PD_plot <- annotate_figure(PD_plot, left = text_grob("Mesodensity Fraction in % (1.8-2.4 g/cc)", rot = 90, vjust = 1, size = 10))
+# PD_plot <- ggarrange(gg_PD, gg_PD_f, nrow=2)
+# PD_plot <- annotate_figure(PD_plot, rot = 90, vjust = 1, size = 10)
 
-gg_heatmap_PD <- ggarrange(heatmap_AS, gg_PD, heatmap_Community, gg_PD_f, ncol=2, nrow=2, labels = c("A", "C", "B", "D"))
+# gg_heatmap_PD_AS <- ggarrange(heatmap_AS, gg_PD, gg_PD_f, ncol=2, nrow=2, labels = c("A", "C", "B", "D"))
 
-# ggsave("gg_heatmap_PD_20231230.png", plot = gg_heatmap_PD, width=30, height=13, units="cm", dpi=1200)
+# ggsave("gg_heatmap_PD_Community_20231230.png", plot = gg_heatmap_PD, width=30, height=13, units="cm", dpi=1200)
 ```
 
 #######################################################################################################################
 Correlation Plot fungal AS and contribution C at temperature A4 and A5
 ```{r}
-gg_AS_f_Cont_A4 <- ggplot(data = micro) +
-  geom_point(aes(x = Contrib.A4_1, y = GlcN_f)) +
-  labs(y = "fungal GlcN", x = expression(paste("Contribution A4 (%)"))) +
-  geom_smooth(method = lm, aes(x = Contrib.A4_1, y = GlcN_f), linetype = "dashed") +
-  stat_cor(data = micro, aes(y = GlcN_f, x = Contrib.A4_1, label=paste(..rr.label.., ..p.label.., sep = "~`,`~")), colour = "black", label.y = 200) +
-  #xlim(0, NA) +
-  theme_bw() +
-  theme(axis.title = element_text(size = 10), legend.text = element_text(size = 10),
-        legend.title = element_text(size = 10))
+AS_f <- subset(micro, GlcN_f != 0)
 
-gg_AS_f_Cont_A5 <- ggplot(data = micro) +
-  geom_point(aes(x = Contrib.A5_1, y = GlcN_f)) +
-  labs(y = "fungal GlcN", x = expression(paste("Contribution A5 (%)"))) +
-  #geom_smooth(method = lm, aes(x = GlcN_f, y = Contrib.A5_1), linetype = "dashed") +
-  stat_cor(data = micro, aes(y = GlcN_f, x = Contrib.A5_1, label=paste(..rr.label.., ..p.label.., sep = "~`,`~")), colour = "black", label.y = 200) +
-  #xlim(0, NA) +
-  theme_bw() +
-  theme(axis.title = element_text(size = 10), legend.text = element_text(size = 10),
-        legend.title = element_text(size = 10))
-
-AS_f_plot <- ggarrange(gg_AS_f_Cont_A4 + rremove("ylab"), gg_AS_f_Cont_A5 + rremove("ylab"), nrow=2, labels = c("A", "B"))
-AS_f_plot <- annotate_figure(AS_f_plot, left = text_grob(expression(paste("Fungal Amino Sugars (soil g"^"-1",")")), rot = 90, vjust = 1, size = 10))
-
-gg_AS_f_Cont_A4_A5 <- ggplot(data = micro) +
-  geom_point(aes(x = (Contrib.A4_1 + Contrib.A5_1), y = GlcN_f)) +
+gg_AS_f_Cont_A4_A5 <- ggplot(data = AS_f) +
+  geom_point(aes(x = (Contrib.A4_1 + Contrib.A5_1), y = GlcN_f, colour = Community)) +
+  scale_colour_manual(values = c("#CC6666", "#C4961A", "#D16103"), guide = "none") +
   labs(y = expression(paste("Fungal Amino Sugars (soil g"^"-1",")")), x = "Contribution A4 and A5 (%)") +
-  geom_smooth(method = lm, aes(x = (Contrib.A4_1 + Contrib.A5_1), y = GlcN_f), linetype = "dashed") +
-  stat_cor(data = micro, aes(y = GlcN_f, x = (Contrib.A4_1 + Contrib.A5_1), label=paste(..rr.label.., ..p.label.., sep = "~`,`~")), colour = "black", label.y = 250) +
+  geom_smooth(method = lm, aes(x = (Contrib.A4_1 + Contrib.A5_1), y = GlcN_f)) +
+  stat_cor(data = AS_f, aes(y = GlcN_f, x = (Contrib.A4_1 + Contrib.A5_1), label=paste(..rr.label.., ..p.label.., sep = "~`,`~")), colour = "black", label.y = 250) +
   #xlim(0, NA) +
   theme_bw() +
-  theme(axis.title = element_text(size = 10), legend.text = element_text(size = 10),
-        legend.title = element_text(size = 10))
+  theme(axis.title = element_text(size = 12), axis.text = element_text(size=10))
 
-ggsave("figures/gg_AS_f_Cont_A4_A5.png", plot = AS_f_plot, width=30, height=13, units="cm", dpi=1200)
-ggsave("figures/gg_AS_f_Cont_A4_A5_sum.png", plot = gg_AS_f_Cont_A4_A5, width=30, height=13, units="cm", dpi=1200)
+gg_AS_Cont_A4_A5 <- ggplot(data = micro) +
+  geom_point(aes(x = (Contrib.A4_1 + Contrib.A5_1), y = AS_abs, colour = Community)) +
+  scale_colour_manual(values = c("#CC6666", "#C4961A", "#009E73", "#D16103")) +
+  labs(y = expression(paste("Total Amino Sugars (soil g"^"-1",")")), x = "Contribution A4 and A5 (%)") +
+  geom_smooth(method = lm, aes(x = (Contrib.A4_1 + Contrib.A5_1), y = AS_abs), linetype = "dashed") +
+  stat_cor(data = micro, aes(y = AS_abs, x = (Contrib.A4_1 + Contrib.A5_1), label=paste(..rr.label.., ..p.label.., sep = "~`,`~")), colour = "black", label.y = 250) +
+  #xlim(0, NA) +
+  theme_bw() +
+  theme(axis.title = element_text(size = 12), axis.text = element_text(size=10))
+
+gg_AS_fungal <- ggarrange(gg_AS_f_Cont_A4_A5 + rremove("ylab"), gg_PD_f + rremove("ylab"), ncol=1, nrow=2, labels = c("B"))
+gg_AS_fungal <- annotate_figure(gg_AS_fungal, left = text_grob(expression(paste("Fungal Amino Sugars (soil g"^"-1",")")), rot = 90, vjust = 1, size = 12))
+gg_AS_total <- ggarrange(gg_AS_Cont_A4_A5 + rremove("ylab"), gg_PD + rremove("ylab"), ncol=1, nrow=2, labels = c("C"))
+gg_AS_total <- annotate_figure(gg_AS_total, left = text_grob(expression(paste("Total Amino Sugars (soil g"^"-1",")")), rot = 90, vjust = 1, size = 12))
+gg_AS_PD <- ggarrange(gg_AS_fungal, gg_AS_total, ncol=2, nrow=1)
+
+gg_heatmap_PD_AS <- ggarrange(heatmap_AS, gg_AS_PD, ncol=1, nrow=2, labels = c("A"))
+
+ggsave("figures/gg_heatmap_AS_PD.png", plot = gg_heatmap_PD_AS)
 ```
 
 #######################################################################################################################
