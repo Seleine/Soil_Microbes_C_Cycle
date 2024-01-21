@@ -27,7 +27,7 @@ library(scales)
 
 #######################################################################################################################
 Read data
-```{r} 
+```{r}
 micro <- read_excel("Masterfile.xlsx", range = "A1:CY33")
 
 #put together the two independent variables
@@ -389,22 +389,23 @@ gg_heatmap_PD <- ggarrange(heatmap_AS, gg_PD, heatmap_Community, gg_PD_f, ncol=2
 
 #######################################################################################################################
 Correlation Plot fungal AS and contribution C at temperature A4 and A5
-
 ```{r}
 gg_AS_f_Cont_A4 <- ggplot(data = micro) +
-  geom_point(aes(x = GlcN_f, y = Contrib.A4_1)) +
-  labs(y = "fungal GlcN", x = expression(paste("Contribution A4"))) +
-  geom_smooth(method = lm, aes(x = GlcN_f, y = Contrib.A4_1), linetype = "dashed") +
-  stat_cor(data = micro, aes(y = Contrib.A4_1, x = GlcN_f, label=paste(..rr.label.., ..p.label.., sep = "~`,`~")), colour = "black", label.y = 25) +
+  geom_point(aes(x = Contrib.A4_1, y = GlcN_f)) +
+  labs(y = "fungal GlcN", x = expression(paste("Contribution A4 (%)"))) +
+  geom_smooth(method = lm, aes(x = Contrib.A4_1, y = GlcN_f), linetype = "dashed") +
+  stat_cor(data = micro, aes(y = GlcN_f, x = Contrib.A4_1, label=paste(..rr.label.., ..p.label.., sep = "~`,`~")), colour = "black", label.y = 200) +
+  #xlim(0, NA) +
   theme_bw() +
   theme(axis.title = element_text(size = 10), legend.text = element_text(size = 10),
         legend.title = element_text(size = 10))
 
 gg_AS_f_Cont_A5 <- ggplot(data = micro) +
-  geom_point(aes(x = GlcN_f, y = Contrib.A5_1)) +
-  labs(y = "fungal GlcN", x = expression(paste("Contribution A5"))) +
+  geom_point(aes(x = Contrib.A5_1, y = GlcN_f)) +
+  labs(y = "fungal GlcN", x = expression(paste("Contribution A5 (%)"))) +
   #geom_smooth(method = lm, aes(x = GlcN_f, y = Contrib.A5_1), linetype = "dashed") +
-  stat_cor(data = micro, aes(y = Contrib.A5_1, x = GlcN_f, label=paste(..rr.label.., ..p.label.., sep = "~`,`~")), colour = "black", label.y = 15) +
+  stat_cor(data = micro, aes(y = GlcN_f, x = Contrib.A5_1, label=paste(..rr.label.., ..p.label.., sep = "~`,`~")), colour = "black", label.y = 200) +
+  #xlim(0, NA) +
   theme_bw() +
   theme(axis.title = element_text(size = 10), legend.text = element_text(size = 10),
         legend.title = element_text(size = 10))
@@ -413,10 +414,11 @@ AS_f_plot <- ggarrange(gg_AS_f_Cont_A4 + rremove("ylab"), gg_AS_f_Cont_A5 + rrem
 AS_f_plot <- annotate_figure(AS_f_plot, left = text_grob(expression(paste("Fungal Amino Sugars (soil g"^"-1",")")), rot = 90, vjust = 1, size = 10))
 
 gg_AS_f_Cont_A4_A5 <- ggplot(data = micro) +
-  geom_point(aes(x = GlcN_f, y = (Contrib.A4_1 + Contrib.A5_1))) +
-  labs(y = expression(paste("Fungal Amino Sugars (soil g"^"-1",")")), x = "Contribution A4 and A5") +
-  geom_smooth(method = lm, aes(x = GlcN_f, y = (Contrib.A4_1 + Contrib.A5_1)), linetype = "dashed") +
-  stat_cor(data = micro, aes(y = (Contrib.A4_1 + Contrib.A5_1), x = GlcN_f, label=paste(..rr.label.., ..p.label.., sep = "~`,`~")), colour = "black", label.y = 35) +
+  geom_point(aes(x = (Contrib.A4_1 + Contrib.A5_1), y = GlcN_f)) +
+  labs(y = expression(paste("Fungal Amino Sugars (soil g"^"-1",")")), x = "Contribution A4 and A5 (%)") +
+  geom_smooth(method = lm, aes(x = (Contrib.A4_1 + Contrib.A5_1), y = GlcN_f), linetype = "dashed") +
+  stat_cor(data = micro, aes(y = GlcN_f, x = (Contrib.A4_1 + Contrib.A5_1), label=paste(..rr.label.., ..p.label.., sep = "~`,`~")), colour = "black", label.y = 250) +
+  #xlim(0, NA) +
   theme_bw() +
   theme(axis.title = element_text(size = 10), legend.text = element_text(size = 10),
         legend.title = element_text(size = 10))
