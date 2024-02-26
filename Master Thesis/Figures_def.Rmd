@@ -109,6 +109,24 @@ fct_tukey <- function(y_of_choice, with_moisture=TRUE) {
   Tukey_CM<-HSD.test(log(y_of_choice), parametres, df, MSerror, group=TRUE)
   return(Tukey_CM)
 }
+
+fct_tukey_diff_dataset <- function(data, y_of_choice, with_moisture=TRUE) {
+  
+  if (with_moisture==FALSE) {
+    parametres = data$Community
+  }
+  else {
+    parametres = data$com_moist
+  }
+  
+  aov <- aov(data=data, log(y_of_choice) ~ factor(parametres))
+  summary(aov)
+
+  df<-df.residual(aov)
+  MSerror<-deviance(aov)/df
+  Tukey_CM<-HSD.test(log(y_of_choice), parametres, df, MSerror, group=TRUE)
+  return(Tukey_CM)
+}
 ```
 
 Function Scatterplot
@@ -185,6 +203,9 @@ fct_tukey(micro$CUE1)
 
 Plot bacterial, fungal and total AS
 ```{r}
+AS_f <- subset(micro, GlcN_f != 0)
+AS_non_f <- subset(micro, Community != "Fonly")
+
 # gg_AS2 <- ggarrange(
 #   fct_boxplot(micro$MurN_C2, expression(paste("Bacterial (µg C g soil"^"-1",")")), 20, "Community", y_log=FALSE, desired_ticks = NA),
 #   fct_boxplot(micro$GlcN_f_C2, expression(paste("Fungal (µg C g soil"^"-1",")")), NA, "Community", y_log=FALSE, desired_ticks = NA),
@@ -194,14 +215,16 @@ Plot bacterial, fungal and total AS
 # ggsave("gg_AS2_20231230.png", plot = gg_AS2, width=16, height=13, units="cm", dpi=1200)
 
 #Tukey Test
-# fct_tukey(micro$MurN_C2)
-# fct_tukey(micro$GlcN_f_C2)
+fct_tukey_diff_dataset(AS_non_f, AS_non_f$MurN_C2, with_moisture=FALSE)
+fct_tukey_diff_dataset(AS_f, AS_f$GlcN_f_C2, with_moisture=FALSE)
 fct_tukey(micro$AS_C2, with_moisture=FALSE)
 ```
 
 
 Plot all AS
 ```{r}
+AS_non_f <- subset(micro, Community != "Fonly")
+
 gg_AS3 <- ggarrange(
   fct_boxplot(micro$GlcN_C2, expression(paste("GlcN (μg C soil g"^"-1",")")), NA, "Community", y_log=FALSE, desired_ticks = NA),
   fct_boxplot(micro$ManN_C2, expression(paste("ManN (μg C soil g"^"-1",")")), NA, "Community", y_log=FALSE, desired_ticks = NA),
@@ -215,7 +238,7 @@ gg_AS3 <- ggarrange(
 fct_tukey(micro$GlcN_C2)
 fct_tukey(micro$ManN_C2)
 fct_tukey(micro$GalN_C2)
-fct_tukey(micro$MurN_C2)
+fct_tukey_diff_dataset(AS_non_f, AS_non_f$MurN_C2, with_moisture=FALSE)
 ```
 
 #######################################################################################################################
@@ -266,6 +289,22 @@ gg_AS <- ggarrange(
 # ggsave("gg_AS_20230717.png", plot = gg_AS)
 ```
 
+TOC: Boxplot
+```{r}
+gg_TOC1 = fct_boxplot(y_of_choice = micro$TOC1, y_label = expression(paste("\nTOC (%) FMSOC")), ymax = NA, x_label = "Community", with_moisture=TRUE, y_log=FALSE, desired_ticks=NA)
+
+gg_TOC2 = fct_boxplot(y_of_choice = micro$TOC2, y_label = expression(paste("\nTOC (%) PSOC")), ymax = NA, x_label = "Community", with_moisture=TRUE, y_log=FALSE, desired_ticks=NA)
+
+gg_TOC_ratio = fct_boxplot(y_of_choice = micro$TOC_ratio, y_label = expression(paste("Ratio TOC (FM/P)")), ymax = NA, x_label = "Community", with_moisture=TRUE, y_log=FALSE, desired_ticks=NA)
+
+gg_TOC <- ggarrange(gg_TOC1, gg_TOC2, gg_TOC_ratio, nrow=3, ncol=1, labels = c("A", "B", "C"))
+
+fct_tukey(micro$TOC1, with_moisture = FALSE)
+fct_tukey(micro$TOC2, with_moisture = FALSE)
+fct_tukey(micro$TOC_ratio, with_moisture = FALSE)
+
+# ggsave("figures/gg_TOC.png", plot = gg_TOC, dpi=1200)
+```
 
 #######################################################################################################################
 Heatmap
@@ -364,7 +403,7 @@ PD2_f <- subset(PD2, GlcN_f != 0)
 
 gg_PD <- ggplot(data = PD2) +
   geom_point(aes(x = meso, y = AS_abs, colour = Community)) +
-  scale_colour_manual(values = c("#CC6666", "#009E73", "#D16103"), guide = "none") +
+  scale_colour_manual(values = c("#CC6666", "#009E73", "#D16103")) +
   labs(x = "Mesodensity Fraction in %", y = expression(paste("Total Amino Sugars (soil g"^"-1",")"))) +
   geom_smooth(method = lm, aes(y = AS_abs, x = meso), linetype = "dashed") +
   stat_cor(data = PD2, aes(x = meso, y = AS_abs, label=paste(..rr.label.., ..p.label.., sep = "~`,`~")), colour = "black", label.y = 300) +
@@ -397,7 +436,7 @@ AS_f <- subset(micro, GlcN_f != 0)
 gg_AS_f_Cont_A4_A5 <- ggplot(data = AS_f) +
   geom_point(aes(x = (Contrib.A4_1 + Contrib.A5_1), y = GlcN_f, colour = Community)) +
   scale_colour_manual(values = c("#CC6666", "#C4961A", "#D16103"), guide = "none") +
-  labs(y = expression(paste("Fungal Amino Sugars (soil g"^"-1",")")), x = "Contribution A4 and A5 (%)") +
+  labs(y = expression(paste("Fungal Amino Sugars (soil g"^"-1",")")), x = "C measured at 460-650°C (%)") +
   geom_smooth(method = lm, aes(x = (Contrib.A4_1 + Contrib.A5_1), y = GlcN_f)) +
   stat_cor(data = AS_f, aes(y = GlcN_f, x = (Contrib.A4_1 + Contrib.A5_1), label=paste(..rr.label.., ..p.label.., sep = "~`,`~")), colour = "black", label.y = 250) +
   #xlim(0, NA) +
@@ -407,7 +446,7 @@ gg_AS_f_Cont_A4_A5 <- ggplot(data = AS_f) +
 gg_AS_Cont_A4_A5 <- ggplot(data = micro) +
   geom_point(aes(x = (Contrib.A4_1 + Contrib.A5_1), y = AS_abs, colour = Community)) +
   scale_colour_manual(values = c("#CC6666", "#C4961A", "#009E73", "#D16103")) +
-  labs(y = expression(paste("Total Amino Sugars (soil g"^"-1",")")), x = "Contribution A4 and A5 (%)") +
+  labs(y = expression(paste("Total Amino Sugars (soil g"^"-1",")")), x = "C measured at 460-650°C (%)") +
   geom_smooth(method = lm, aes(x = (Contrib.A4_1 + Contrib.A5_1), y = AS_abs), linetype = "dashed") +
   stat_cor(data = micro, aes(y = AS_abs, x = (Contrib.A4_1 + Contrib.A5_1), label=paste(..rr.label.., ..p.label.., sep = "~`,`~")), colour = "black", label.y = 250) +
   #xlim(0, NA) +
@@ -416,13 +455,15 @@ gg_AS_Cont_A4_A5 <- ggplot(data = micro) +
 
 gg_AS_fungal <- ggarrange(gg_AS_f_Cont_A4_A5 + rremove("ylab"), gg_PD_f + rremove("ylab"), ncol=1, nrow=2, labels = c("B"))
 gg_AS_fungal <- annotate_figure(gg_AS_fungal, left = text_grob(expression(paste("Fungal Amino Sugars (soil g"^"-1",")")), rot = 90, vjust = 1, size = 12))
-gg_AS_total <- ggarrange(gg_AS_Cont_A4_A5 + rremove("ylab"), gg_PD + rremove("ylab"), ncol=1, nrow=2, labels = c("C"))
+gg_AS_total <- ggarrange(gg_AS_Cont_A4_A5 + rremove("ylab"), gg_PD + rremove("ylab"), ncol=1, nrow=2, labels = c("C"), common.legend = TRUE, legend = "bottom")
 gg_AS_total <- annotate_figure(gg_AS_total, left = text_grob(expression(paste("Total Amino Sugars (soil g"^"-1",")")), rot = 90, vjust = 1, size = 12))
+
 gg_AS_PD <- ggarrange(gg_AS_fungal, gg_AS_total, ncol=2, nrow=1)
 
 gg_heatmap_PD_AS <- ggarrange(heatmap_AS, gg_AS_PD, ncol=1, nrow=2, labels = c("A"))
 
-ggsave("figures/gg_heatmap_AS_PD.png", plot = gg_heatmap_PD_AS)
+# ggsave("figures/bla.png", plot = gg_AS_total)
+ggsave("figures/gg_heatmap_AS_PD_2.png", plot = gg_heatmap_PD_AS)
 ```
 
 #######################################################################################################################
@@ -445,3 +486,22 @@ var_CUE2
 #showvarparts(4)
 plot(var_CUE2, cutoff = 0.001, digits = 1, cex = 0.7)
 ```
+
+correlation
+```{r}
+cor.test(x=micro$AS_C2, y=micro$resp_h2, method="spearman")
+cor.test(x=micro$MBC1, y=micro$resp_h2, method="spearman")
+cor.test(x=micro$Contrib.A1_2 + micro$Contrib.A2_2, y=micro$resp_h2, method="spearman")
+cor.test(x=micro$Contrib.A4_2 + micro$Contrib.A5_2, y=micro$resp_h2, method="spearman")
+
+cor.test(x=micro$AS_C2, y=micro$growth2, method="spearman")
+cor.test(x=micro$MBC1, y=micro$growth2, method="spearman")
+cor.test(x=micro$Contrib.A1_2 + micro$Contrib.A2_2, y=micro$growth2, method="spearman")
+cor.test(x=micro$Contrib.A4_2 + micro$Contrib.A5_2, y=micro$growth2, method="spearman")
+
+cor.test(x=micro$AS_C2, y=micro$CUE2, method="spearman")
+cor.test(x=micro$MBC1, y=micro$CUE2, method="spearman")
+cor.test(x=micro$Contrib.A1_2 + micro$Contrib.A2_2, y=micro$CUE2, method="spearman")
+cor.test(x=micro$Contrib.A4_2 + micro$Contrib.A5_2, y=micro$CUE2, method="spearman")
+```
+
