@@ -147,7 +147,7 @@ fct_scatterplot <- function(y_of_choice, ylabel, x_of_choice, xlabel, reg_line, 
     scale_y_continuous(
       breaks = log(desired_ticks),
       labels = desired_ticks) +
-    stat_cor(data = micro,
+    stat_cor(data = micro, # default of stat_cor is pearson
              aes(y = log(y_of_choice), x = x_of_choice,
                  label=paste(..rr.label..,..p.label.., sep = "~`,`~")),
              colour = "black") +
