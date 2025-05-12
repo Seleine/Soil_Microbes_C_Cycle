@@ -7,12 +7,12 @@ output: html_document
 
 ```{r}
 library(ggplot2)
-library(datetime)
+#library(datetime)
 library(tidyr)
 library(readxl)
 library(ggpubr)
 library(MASS)
-library(MuMIn)
+#library(MuMIn)
 library(agricolae)
 library(stringr)
 library(nlme)
@@ -23,12 +23,15 @@ require(grid)
 library(cowplot)
 library(readr)
 library(scales)
+
+citation("stats")
 ```
 
 #######################################################################################################################
 Read data
 ```{r}
-micro <- read_excel("Masterfile.xlsx", range = "A1:CY33")
+micro <- read_excel("Masterfile.xlsx", range = "A1:DA33")
+micro$Community = as.factor(micro$Community)
 
 #put together the two independent variables
 micro$com_moist <- str_c(micro$Community, '.', micro$moist)
@@ -38,6 +41,17 @@ BFcomplex <- subset(micro, Community == "BFcomplex")
 BFsimple <- subset(micro, Community == "BFsimple")
 Bonly <- subset(micro, Community == "Bonly")
 Fonly <- subset(micro, Community == "Fonly")
+
+library(multcomp) 
+aov.1 <- aov(data=micro, log(cum_C_h1_ng) ~ Community)
+summary(aov.1)
+str(micro)
+glht.mod <- glht(aov.1, mcp(Community = "Tukey"))
+cld.mod <- cld(glht.mod)
+# cld: Set up a compact letter display of all pair-wise comparisons
+cld.mod
+par(oma=c(3,0,0,0)) # par is used for a nicer display of the plots
+plot(cld.mod)
 ```
 
 Function for Boxplots
@@ -75,7 +89,7 @@ fct_boxplot <- function(y_of_choice, y_label, ymax, x_label, with_moisture=TRUE,
   return(gg_boxplot)
 }
 
-fct_boxplot_moisture <- function(y_of_choice, y_label, ymax, x_label) {
+gfct_boxplot_moisture <- function(y_of_choice, y_label, ymax, x_label) {
   gg_boxplot <- ggplot(data = micro) +
   geom_boxplot(aes(x = Treatment, y = y_of_choice, fill = Community)) +
   labs(y = y_label, x = x_label) +
@@ -129,6 +143,14 @@ fct_tukey_diff_dataset <- function(data, y_of_choice, with_moisture=TRUE) {
 }
 ```
 
+Function get slope
+```{r}
+fct_get_slope <- function(data, x, y) {
+  mod <- lm(data=data, y ~ x)
+  return(summary(mod)$coefficients[[2]])
+}
+```
+
 Function Scatterplot
 ```{r}
 fct_scatterplot <- function(y_of_choice, ylabel, x_of_choice, xlabel, reg_line, desired_ticks) {
@@ -168,7 +190,7 @@ gg_cum_resp <- ggarrange(gg_cum_C_h1, gg_cum_C_h1_moisture, nrow=1, ncol=2, labe
 
 fct_tukey(micro$cum_C_h1_ng, with_moisture = FALSE)
 
-ggsave("gg_cum_C_h_FMSOC_20231230.png", plot = gg_cum_resp, dpi=1200)
+# ggsave("gg_cum_C_h_FMSOC_20231230.png", plot = gg_cum_resp, dpi=1200)
 ```
 
 AAE
@@ -289,6 +311,23 @@ gg_AS <- ggarrange(
 # ggsave("gg_AS_20230717.png", plot = gg_AS)
 ```
 
+get slopes 
+```{r}
+fct_get_slope <- function(x, y) {
+  mod <- lm(y ~ x)
+  return(summary(mod)$coefficients[[2]])
+}
+
+fct_get_slope(x=BFcomplex$AS_C2, y=log(BFcomplex$cum_C_h2_ng))
+fct_get_slope(x=Bonly$AS_C2, y=Bonly$cum_C_h2_ng)
+fct_get_slope(x=BFcomplex$AS_C2, y=BFcomplex$growth2)
+fct_get_slope(x=BFsimple$AS_C2, y=BFsimple$growth2)
+fct_get_slope(x=Bonly$AS_C2, y=Bonly$growth2)
+fct_get_slope(x=BFcomplex$AS_C2, y=BFcomplex$resp_h2)
+fct_get_slope(x=BFsimple$AS_C2, y=BFsimple$resp_h2)
+fct_get_slope(x=Bonly$AS_C2, y=Bonly$resp_h2)
+```
+
 TOC: Boxplot
 ```{r}
 gg_TOC1 = fct_boxplot(y_of_choice = micro$TOC1, y_label = expression(paste("\nTOC (%) FMSOC")), ymax = NA, x_label = "Community", with_moisture=TRUE, y_log=FALSE, desired_ticks=NA)
@@ -304,6 +343,53 @@ fct_tukey(micro$TOC2, with_moisture = FALSE)
 fct_tukey(micro$TOC_ratio, with_moisture = FALSE)
 
 # ggsave("figures/gg_TOC.png", plot = gg_TOC, dpi=1200)
+```
+
+TOC1
+Plot TOC (FMSOC) with CUE, resp CUE, Growth CUE, Cumulative C (PSOC)
+```{r}
+desired_ticks_cum_resp <- c(0, 500, 1000, 2000, 4000, 8000)
+desired_ticks_growth <- c(0, 10, 25, 100, 300)
+desired_ticks_resp <- c(0, 200, 1000, 10000)
+desired_ticks_CUE <- c(0, 1, 5, 10, 20, 40)
+
+p.vals = sapply(unique(micro$Community), function(i) {
+  coef(summary(lm(log(cum_C_h2_ng) ~ TOC1, data=micro[micro$Community==i, ])))[2,4]
+})
+reg_line_cum_C_h2 <- geom_smooth(data=micro[micro$Community %in% names(p.vals)[p.vals < 0.05],], 
+                        aes(x=TOC1, y=log(cum_C_h2_ng), colour=Community), method='lm',
+               colour = "#3366FF")
+
+p.vals = sapply(unique(micro$Community), function(i) {
+  coef(summary(lm(log(growth2) ~ TOC1, data=micro[micro$Community==i, ])))[2,4]
+})
+reg_line_growth2<- geom_smooth(data=micro[micro$Community %in% names(p.vals)[p.vals < 0.05],], 
+                        aes(x=TOC1, y=log(growth2), colour=Community), method='lm',
+               colour = "#3366FF")
+
+p.vals = sapply(unique(micro$Community), function(i) {
+  coef(summary(lm(log(resp_h2) ~ TOC1, data=micro[micro$Community==i, ])))[2,4]
+})
+reg_line_resp_h2<- geom_smooth(data=micro[micro$Community %in% names(p.vals)[p.vals < 0.05],], 
+                        aes(x=TOC1, y=log(resp_h2), colour=Community), method='lm',
+               colour = "#3366FF")
+
+p.vals = sapply(unique(micro$Community), function(i) {
+  coef(summary(lm(log(CUE2) ~ TOC1, data=micro[micro$Community==i, ])))[2,4]
+})
+reg_line_CUE2<- geom_smooth(data=micro[micro$Community %in% names(p.vals)[p.vals < 0.05],], 
+                        aes(x=TOC1, y=log(CUE2), colour=Community), method='lm',
+               colour = "#3366FF")
+
+gg_TOC1 <- ggarrange(
+  fct_scatterplot(micro$cum_C_h2_ng, expression(paste("Cumulative Resp (ng C g"^"-1", " h"^"-1",")")), micro$TOC1, "", reg_line_cum_C_h2, desired_ticks_cum_resp),
+  fct_scatterplot(micro$growth2, expression(paste("Growth (ng C soil g"^"-1", " h"^"-1",")")), micro$TOC1, "", reg_line_growth2, desired_ticks_growth),
+  fct_scatterplot(micro$resp_h2, expression(paste("Respiration (ng C soil g"^"-1", " h"^"-1",")")), micro$TOC1, "", reg_line_resp_h2, desired_ticks_resp),
+  fct_scatterplot(micro$CUE2, "CUE (%) PSOC", micro$TOC1,
+                       expression(paste("Total Organic Carbon (μg C soil g"^"-1",") FMSOC")),
+                                        reg_line_CUE2, desired_ticks_CUE), ncol = 1, nrow = 4)
+
+ggsave("figures/gg_TOC1_20250512.png", plot = gg_TOC1)
 ```
 
 #######################################################################################################################
@@ -504,4 +590,30 @@ cor.test(x=micro$MBC1, y=micro$CUE2, method="spearman")
 cor.test(x=micro$Contrib.A1_2 + micro$Contrib.A2_2, y=micro$CUE2, method="spearman")
 cor.test(x=micro$Contrib.A4_2 + micro$Contrib.A5_2, y=micro$CUE2, method="spearman")
 ```
+
+
+
+######################################################################################################################
+DOC
+```{r}
+fct_boxplot(y_of_choice = micro$DOC, y_label = expression(paste("DOC (measured at 254 nm)")), ymax = NA, x_label = "Community", with_moisture=FALSE, y_log=FALSE, desired_ticks=NA)
+```
+
+DOC_OD
+```{r}
+fct_boxplot(y_of_choice = micro$DOC_OD, y_label = expression(paste("DOC (measured at 254 nm)")), ymax = NA, x_label = "Community", with_moisture=FALSE, y_log=FALSE, desired_ticks=NA)
+
+fct_tukey(micro$DOC_OD, with_moisture=FALSE)
+
+```
+
+remaining glc
+```{r}
+fct_boxplot(y_of_choice = micro$remaining_glc_C_mg, y_label = expression(paste("remaining glc mg")), ymax = NA, x_label = "Community", with_moisture=FALSE, y_log=FALSE, desired_ticks=NA)
+
+fct_tukey(micro$remaining_glc_C_mg, with_moisture=FALSE)
+```
+
+
+
 
