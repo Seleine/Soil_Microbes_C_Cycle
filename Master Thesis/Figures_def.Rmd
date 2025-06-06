@@ -23,6 +23,7 @@ require(grid)
 library(cowplot)
 library(readr)
 library(scales)
+library(tidyverse)
 
 citation("stats")
 ```
@@ -89,19 +90,19 @@ fct_boxplot <- function(y_of_choice, y_label, ymax, x_label, with_moisture=TRUE,
   return(gg_boxplot)
 }
 
-gfct_boxplot_moisture <- function(y_of_choice, y_label, ymax, x_label) {
-  gg_boxplot <- ggplot(data = micro) +
-  geom_boxplot(aes(x = Treatment, y = y_of_choice, fill = Community)) +
-  labs(y = y_label, x = x_label) +
-  facet_wrap(~Community) +
-  scale_fill_manual(values = c("#CC6666", "#C4961A", "#009E73", "#D16103"), guide = "none") +
-  ylim(0, ymax) +
-  stat_compare_means(method = "t.test", aes(x = Treatment, y = log(y_of_choice)), label.x = 1, label.y = log(11000)) +
-  theme_bw()  +
-  theme(legend.position = "none", axis.title = element_text(size = 15),
-        legend.text = element_text(size = 15), legend.title = element_text(size = 15))
-  return(gg_boxplot)
-}
+# fct_boxplot_moisture <- function(y_of_choice, y_label, ymax, x_label) {
+#   gg_boxplot <- ggplot(data = micro) +
+#   geom_boxplot(aes(x = Treatment, y = y_of_choice, fill = Community)) +
+#   labs(y = y_label, x = x_label) +
+#   facet_wrap(~Community) +
+#   scale_fill_manual(values = c("#CC6666", "#C4961A", "#009E73", "#D16103"), guide = "none") +
+#   ylim(0, ymax) +
+#   stat_compare_means(method = "t.test", aes(x = Treatment, y = log(y_of_choice)), label.x = 1, label.y = log(11000)) +
+#   theme_bw()  +
+#   theme(legend.position = "none", axis.title = element_text(size = 15),
+#         legend.text = element_text(size = 15), legend.title = element_text(size = 15))
+#   return(gg_boxplot)
+# }
 ```
 
 Tukey Test Function
@@ -180,13 +181,47 @@ fct_scatterplot <- function(y_of_choice, ylabel, x_of_choice, xlabel, reg_line, 
 }
 ```
 
+
+```{r}
+CO2_h_part1 <- read_excel("C:/Users/selin/OneDrive - ZHAW/UZH/Master/Master Thesis/Master Thesis 2021 Stats/Growth/CO2_h_part1.xlsx", range = "A1:T273")
+```
+
+First plot
+```{r}
+mean.resp <- CO2_h_part1 %>%
+  group_by(timepoint, species, moisture) %>%
+  summarise(mean.C=mean(C_ug),
+            sd.C=sd(C_ug),
+            se.C=sd(C_ug)/sqrt(n()),
+            hours=mean(hours))
+
+gg_cum1 <- ggplot(data = mean.resp) +
+  geom_point(aes(x = hours, y = mean.C, colour = moisture)) +
+  geom_errorbar(aes(x = hours, y = mean.C, colour = moisture,
+                    ymin = mean.C - se.C,
+                    ymax = mean.C + se.C), width = 0.1) +
+  labs(y = expression(paste("Respiration (μg CO"["2"], "-C soil g"^"-1", " h"^"-1",")")), x = "Hours of Incubation", colour = "Moisture Treatment") +
+  scale_colour_discrete(labels = c("Dry (40% WHC)", "Moist (80% WHC)")) +
+  facet_wrap(~species) +
+  theme_bw()
+
+ggplot(data = CO2_h_part1) +
+  geom_point(aes(x = hours, y = C_ug, colour = moisture)) +
+  facet_wrap(~ species) +
+  labs(y = expression(paste("Respiration (μg CO"["2"], "-C (g dry weight soil)"^"-1", " h"^"-1",")")), x = "Hours of Incubation", colour = "Moisture") +
+  scale_colour_discrete(labels = c("Dry (40% WHC)", "Moist (80% WHC)")) +
+  theme_bw()
+
+ggsave("figures/gg_cumulative_part1.png", plot=gg_cum1)
+```
+
 Cumulative Respiration: Boxplot
 ```{r}
 gg_cum_C_h1 = fct_boxplot(y_of_choice = micro$cum_C_h1_ng, y_label = expression(paste("Cumulative Respiration (ng C soil g"^"-1", " h"^"-1",")")), ymax = NA, x_label = "Community", with_moisture=FALSE, y_log=FALSE, desired_ticks=NA)
 
-gg_cum_C_h1_moisture = fct_boxplot_moisture(micro$cum_C_h1_ng, expression(paste("Cumulative Respiration Rate (ng C soil g"^"-1", "h"^"-1",")")), NA, "Moisture Treatment")
-
-gg_cum_resp <- ggarrange(gg_cum_C_h1, gg_cum_C_h1_moisture, nrow=1, ncol=2, labels = c("A", "B"))
+# gg_cum_C_h1_moisture = fct_boxplot_moisture(micro$cum_C_h1_ng, expression(paste("Cumulative Respiration Rate (ng C soil g"^"-1", "h"^"-1",")")), NA, "Moisture Treatment")
+# 
+# gg_cum_resp <- ggarrange(gg_cum_C_h1, gg_cum_C_h1_moisture, nrow=1, ncol=2, labels = c("A", "B"))
 
 fct_tukey(micro$cum_C_h1_ng, with_moisture = FALSE)
 
@@ -307,7 +342,7 @@ gg_AS <- ggarrange(
   fct_scatterplot(micro$CUE2, "CUE (%) PSOC", micro$AS_C2,
                        expression(paste("Total Amino Sugars (μg C soil g"^"-1",") FMSOC")),
                                         reg_line_CUE2, desired_ticks_CUE), ncol = 1, nrow = 4)
-
+gg_AS
 # ggsave("gg_AS_20230717.png", plot = gg_AS)
 ```
 
@@ -381,7 +416,7 @@ reg_line_CUE2<- geom_smooth(data=micro[micro$Community %in% names(p.vals)[p.vals
                         aes(x=TOC1, y=log(CUE2), colour=Community), method='lm',
                colour = "#3366FF")
 
-gg_TOC1 <- ggarrange(
+gg_TOC1_scatter <- ggarrange(
   fct_scatterplot(micro$cum_C_h2_ng, expression(paste("Cumulative Resp (ng C g"^"-1", " h"^"-1",")")), micro$TOC1, "", reg_line_cum_C_h2, desired_ticks_cum_resp),
   fct_scatterplot(micro$growth2, expression(paste("Growth (ng C soil g"^"-1", " h"^"-1",")")), micro$TOC1, "", reg_line_growth2, desired_ticks_growth),
   fct_scatterplot(micro$resp_h2, expression(paste("Respiration (ng C soil g"^"-1", " h"^"-1",")")), micro$TOC1, "", reg_line_resp_h2, desired_ticks_resp),
@@ -389,7 +424,9 @@ gg_TOC1 <- ggarrange(
                        expression(paste("Total Organic Carbon (μg C soil g"^"-1",") FMSOC")),
                                         reg_line_CUE2, desired_ticks_CUE), ncol = 1, nrow = 4)
 
-ggsave("figures/gg_TOC1_20250512.png", plot = gg_TOC1)
+gg_TOC1_scatter
+
+ggsave("figures/gg_TOC1_20250512.png", plot = gg_TOC1_scatter)
 ```
 
 #######################################################################################################################
@@ -514,6 +551,22 @@ gg_PD_f <- ggplot(data = PD2_f) +
 # ggsave("gg_heatmap_PD_Community_20231230.png", plot = gg_heatmap_PD, width=30, height=13, units="cm", dpi=1200)
 ```
 
+```{r}
+#without dry treatment
+PD2 <- subset(micro, moist != "D" & Community != "BFsimple")
+#PD2 <- subset(PD2, Community != "BFsimple")
+PD2_b <- subset(PD2, GlcN_b != 0)
+
+gg_PD_b <- ggplot(data = PD2_b) +
+  geom_point(aes(y = GlcN_b, x = meso, colour = Community)) +
+  scale_colour_manual(values = c("#CC6666", "#009E73"), guide = "none") +
+  labs(x = "Mesodensity Fraction in %", y = expression(paste("Bacterial AS (soil g"^"-1",")"))) +
+  geom_smooth(method = lm, aes(y = GlcN_b, x = meso)) +
+  stat_cor(data = PD2_b, aes(x = meso, y = GlcN_b, label=paste(..rr.label.., ..p.label.., sep = "~`,`~")), colour = "black", label.y = 300) +
+  theme_bw() +
+  theme(axis.title = element_text(size = 12), axis.text = element_text(size=10))
+```
+
 #######################################################################################################################
 Correlation Plot fungal AS and contribution C at temperature A4 and A5
 ```{r}
@@ -548,9 +601,40 @@ gg_AS_PD <- ggarrange(gg_AS_fungal, gg_AS_total, ncol=2, nrow=1)
 
 gg_heatmap_PD_AS <- ggarrange(heatmap_AS, gg_AS_PD, ncol=1, nrow=2, labels = c("A"))
 
-# ggsave("figures/bla.png", plot = gg_AS_total)
-ggsave("figures/gg_heatmap_AS_PD_2.png", plot = gg_heatmap_PD_AS)
+#ggsave("figures/gg_heatmap_AS_PD_2.png", plot = gg_heatmap_PD_AS)
 ```
+
+#######################################################################################################################
+Correlation Plot bacterial AS and contribution C at temperature A4 and A5
+```{r}
+AS_b <- subset(micro, GlcN_b != 0)
+
+gg_AS_bacterial <- ggplot(data = AS_b) +
+  geom_point(aes(x = (Contrib.A4_1 + Contrib.A5_1), y = GlcN_b, colour = Community)) +
+  scale_colour_manual(values = c("#CC6666", "#C4961A", "#009E73")) +
+  labs(y = expression(paste("Bacterial AS (soil g"^"-1",")")), x = "C measured at 460-650°C (%)") +
+  #geom_smooth(method = lm, aes(x = (Contrib.A4_1 + Contrib.A5_1), y = GlcN_f)) +
+  stat_cor(data = AS_b, aes(y = GlcN_b, x = (Contrib.A4_1 + Contrib.A5_1), label=paste(..rr.label.., ..p.label.., sep = "~`,`~")), colour = "black", label.y = 250) +
+  #xlim(0, NA) +
+  theme_bw() +
+  theme(axis.title = element_text(size = 12), axis.text = element_text(size=10))
+```
+
+```{r}
+# gg_AS_fungal <- ggarrange(gg_AS_f_Cont_A4_A5 + rremove("ylab"), gg_PD_f + rremove("ylab"), ncol=1, nrow=2, labels = c("B"))
+# gg_AS_fungal <- annotate_figure(gg_AS_fungal, left = text_grob(expression(paste("Fungal Amino Sugars (soil g"^"-1",")")), rot = 90, vjust = 1, size = 12))
+# gg_AS_total <- ggarrange(gg_AS_Cont_A4_A5 + rremove("ylab"), gg_PD + rremove("ylab"), ncol=1, nrow=2, labels = c("C"), common.legend = TRUE, legend = "bottom")
+# gg_AS_total <- annotate_figure(gg_AS_total, left = text_grob(expression(paste("Total Amino Sugars (soil g"^"-1",")")), rot = 90, vjust = 1, size = 12))
+
+gg_AS_PD_b <- ggarrange(gg_AS_bacterial + rremove("ylab"), gg_PD_b + rremove("ylab"), ncol=1, nrow=2, labels = c("A", "B"), common.legend = TRUE, legend = "bottom")
+gg_AS_PD_b <- annotate_figure(gg_AS_PD_b, left = text_grob(expression(paste("Bacterial Amino Sugars (soil g"^"-1",")")), rot = 90, vjust = 1, size = 12))
+```
+
+```{r}
+ggsave("figures/gg_AS_PD_b.png", plot = gg_AS_PD_b)
+```
+
+
 
 #######################################################################################################################
 Variance Partitioning
