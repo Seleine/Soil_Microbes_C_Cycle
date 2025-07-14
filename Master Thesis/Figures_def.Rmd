@@ -84,25 +84,37 @@ fct_boxplot <- function(y_of_choice, y_label, ymax, x_label, with_moisture=TRUE,
   ylim(0, ymax) +
   y_log +
   theme_bw()  +
-  theme(legend.position = "none", axis.title = element_text(size = 15),
-        axis.title.x=element_blank(), legend.text = element_text(size = 15),
-        legend.title = element_text(size = 15))
+  theme(legend.position = "none",
+        axis.title = element_text(size = 12),
+        axis.title.x=element_blank(),
+        legend.text = element_text(size = 12),
+        legend.title = element_text(size = 12),
+        axis.text.x = element_text(size = 8))
   return(gg_boxplot)
 }
 
-# fct_boxplot_moisture <- function(y_of_choice, y_label, ymax, x_label) {
-#   gg_boxplot <- ggplot(data = micro) +
-#   geom_boxplot(aes(x = Treatment, y = y_of_choice, fill = Community)) +
-#   labs(y = y_label, x = x_label) +
-#   facet_wrap(~Community) +
-#   scale_fill_manual(values = c("#CC6666", "#C4961A", "#009E73", "#D16103"), guide = "none") +
-#   ylim(0, ymax) +
-#   stat_compare_means(method = "t.test", aes(x = Treatment, y = log(y_of_choice)), label.x = 1, label.y = log(11000)) +
-#   theme_bw()  +
-#   theme(legend.position = "none", axis.title = element_text(size = 15),
-#         legend.text = element_text(size = 15), legend.title = element_text(size = 15))
-#   return(gg_boxplot)
-# }
+fct_boxplot_moisture <- function(y_of_choice, y_label, ymax, x_label) {
+  gg_boxplot <- ggplot(data = micro) +
+  geom_boxplot(aes(x = Treatment, y = y_of_choice, fill = Community)) +
+  labs(y = y_label, x = x_label) +
+  facet_wrap(~Community) +
+  scale_fill_manual(values = c("#CC6666", "#C4961A", "#009E73", "#D16103"), guide = "none") +
+  ylim(0, ymax) +
+  stat_compare_means(method = "t.test", aes(x = Treatment, y = log(y_of_choice)), label.x = 1, label.y = log(11000)) +
+  # stat_compare_means(method = "t.test",
+  #                aes(x = Treatment, y = log(y_of_choice)),
+  #                label = "p.format",
+  #                label.x = 1, label.y = log(11000)) +
+# annotate("text", x = 1, y = log(11500), label = "t-test", size = 5) +
+  theme_bw()  +
+  theme(legend.position = "none",
+        axis.title = element_text(size = 12),
+        axis.title.x=element_blank(),
+        legend.text = element_text(size = 12),
+        legend.title = element_text(size = 12),
+        axis.text.x = element_text(size = 8))
+  return(gg_boxplot)
+}
 ```
 
 Tukey Test Function
@@ -122,6 +134,17 @@ fct_tukey <- function(y_of_choice, with_moisture=TRUE) {
   df<-df.residual(aov)
   MSerror<-deviance(aov)/df
   Tukey_CM<-HSD.test(log(y_of_choice), parametres, df, MSerror, group=TRUE)
+  return(Tukey_CM)
+}
+
+fct_tukey_two <- function(y_of_choice) {
+  
+  aov <- aov(data=micro, log(y_of_choice) ~ factor(Community) * factor(moist))
+  summary(aov)
+
+  df<-df.residual(aov)
+  MSerror<-deviance(aov)/df
+  Tukey_CM<-HSD.test(log(y_of_choice), com_moist, df, MSerror, group=TRUE)
   return(Tukey_CM)
 }
 
@@ -217,15 +240,22 @@ ggsave("figures/gg_cumulative_part1.png", plot=gg_cum1)
 
 Cumulative Respiration: Boxplot
 ```{r}
-gg_cum_C_h1 = fct_boxplot(y_of_choice = micro$cum_C_h1_ng, y_label = expression(paste("Cumulative Respiration (ng C soil g"^"-1", " h"^"-1",")")), ymax = NA, x_label = "Community", with_moisture=FALSE, y_log=FALSE, desired_ticks=NA)
+gg_cum_C_h1 = fct_boxplot(y_of_choice = micro$cum_C_h1_ng, y_label = expression(paste("Cumulative Respiration (ng  ", CO[2], "-C g"^{-1}, " dry soil)")), ymax = NA, x_label = "Community", with_moisture=FALSE, y_log=FALSE, desired_ticks=NA)
 
-# gg_cum_C_h1_moisture = fct_boxplot_moisture(micro$cum_C_h1_ng, expression(paste("Cumulative Respiration Rate (ng C soil g"^"-1", "h"^"-1",")")), NA, "Moisture Treatment")
-# 
-# gg_cum_resp <- ggarrange(gg_cum_C_h1, gg_cum_C_h1_moisture, nrow=1, ncol=2, labels = c("A", "B"))
+gg_cum_C_h1_moisture = fct_boxplot_moisture(micro$cum_C_h1_ng, expression(paste("Cumulative Respiration (ng  ", CO[2], "-C g"^{-1}, " dry soil)")), NA, "Moisture Treatment")
+
+gg_cum_resp <- ggarrange(gg_cum_C_h1, gg_cum_C_h1_moisture, nrow=1, ncol=2, labels = c("A", "B"))
 
 fct_tukey(micro$cum_C_h1_ng, with_moisture = FALSE)
 
-# ggsave("gg_cum_C_h_FMSOC_20231230.png", plot = gg_cum_resp, dpi=1200)
+fct_tukey(micro$cum_C_h1_ng, with_moisture = TRUE)
+
+#fct_tukey_two(micro$cum_C_h1_ng)
+
+aov <- aov(data=micro, log(cum_C_h1_ng) ~ factor(Community) * factor(moist))
+summary(aov)
+
+ggsave("figures/Fig_2_20250714.png", plot = gg_cum_resp, dpi=1200)
 ```
 
 AAE
@@ -234,9 +264,11 @@ gg_AAE = fct_boxplot(y_of_choice = micro$AAE_total_perc, y_label = 'Amino Sugar 
 
 fct_tukey(micro$AAE_total_perc, with_moisture=FALSE)
 
+aov <- aov(data=micro, log(AAE_total_perc) ~ factor(Community) * factor(moist))
+summary(aov)
+
 ggsave("gg_AAE_20231230.png", plot = gg_AAE, width=16, height=13, units="cm", dpi=1200)
 ```
-
 
 CUE Plot
 ```{r}
@@ -256,6 +288,37 @@ gg_CUE <- ggarrange(
 fct_tukey(micro$resp_h1)
 fct_tukey(micro$growth1)
 fct_tukey(micro$CUE1)
+
+aov <- aov(data=micro, log(resp_h1) ~ factor(Community) * factor(moist))
+summary(aov)
+
+aov <- aov(data=micro, log(growth1) ~ factor(Community) * factor(moist))
+summary(aov)
+
+aov <- aov(data=micro, log(CUE1) ~ factor(Community) * factor(moist))
+summary(aov)
+```
+
+Plot all AS
+```{r}
+AS_non_f <- subset(micro, Community != "Fonly")
+
+gg_AS3 <- ggarrange(
+  fct_boxplot(micro$GlcN_C2, expression(paste("GlcN-C (μg C g"^"-1",") dry soil")), NA, "Community", y_log=FALSE, desired_ticks = NA),
+  fct_boxplot(micro$ManN_C2, expression(paste("ManN-C (μg C g"^"-1",") dry soil")), NA, "Community", y_log=FALSE, desired_ticks = NA),
+  fct_boxplot(micro$GalN_C2, expression(paste("GalN-C (μg C g"^"-1",") dry soil")), NA, "Community", y_log=FALSE, desired_ticks = NA),
+  fct_boxplot(micro$MurN_C2, expression(paste("MurN-C (μg C g"^"-1",") dry soil")), NA, "Community", y_log=FALSE, desired_ticks = NA),
+  nrow = 2, ncol = 2, common.legend = TRUE, legend = "bottom")
+
+# , labels = c("A", "B", "C", "D")
+
+# ggsave("figures/Fig_3_20250714_part1.png", plot = gg_AS3, width=16, height=13, units="cm", dpi=1200)
+
+#Tukey Test
+fct_tukey(micro$GlcN_C2)
+fct_tukey(micro$ManN_C2)
+fct_tukey(micro$GalN_C2)
+fct_tukey_diff_dataset(AS_non_f, AS_non_f$MurN_C2, with_moisture=FALSE)
 ```
 
 Plot bacterial, fungal and total AS
@@ -275,30 +338,12 @@ AS_non_f <- subset(micro, Community != "Fonly")
 fct_tukey_diff_dataset(AS_non_f, AS_non_f$MurN_C2, with_moisture=FALSE)
 fct_tukey_diff_dataset(AS_f, AS_f$GlcN_f_C2, with_moisture=FALSE)
 fct_tukey(micro$AS_C2, with_moisture=FALSE)
+
+aov <- aov(data=micro, log(AS_C2) ~ factor(Community) * factor(moist))
+summary(aov)
 ```
 
-
-Plot all AS
-```{r}
-AS_non_f <- subset(micro, Community != "Fonly")
-
-gg_AS3 <- ggarrange(
-  fct_boxplot(micro$GlcN_C2, expression(paste("GlcN (μg C soil g"^"-1",")")), NA, "Community", y_log=FALSE, desired_ticks = NA),
-  fct_boxplot(micro$ManN_C2, expression(paste("ManN (μg C soil g"^"-1",")")), NA, "Community", y_log=FALSE, desired_ticks = NA),
-  fct_boxplot(micro$GalN_C2, expression(paste("GalN (μg C soil g"^"-1",")")), NA, "Community", y_log=FALSE, desired_ticks = NA),
-  fct_boxplot(micro$MurN_C2, expression(paste("MurN (μg C soil g"^"-1",")")), NA, "Community", y_log=FALSE, desired_ticks = NA),
-  nrow = 2, ncol = 2, common.legend = TRUE, legend = "bottom", labels = c("A", "B", "C", "D"))
-
-# ggsave("gg_AS3_20231230.png", plot = gg_AS3, width=16, height=13, units="cm", dpi=1200)
-
-#Tukey Test
-fct_tukey(micro$GlcN_C2)
-fct_tukey(micro$ManN_C2)
-fct_tukey(micro$GalN_C2)
-fct_tukey_diff_dataset(AS_non_f, AS_non_f$MurN_C2, with_moisture=FALSE)
-```
-
-#######################################################################################################################
+#######################################################################################################################^^^^
 Amino Sugars
 Plot AS (FMSOC) with CUE, resp CUE, Growth CUE, Cumulative C (PSOC)
 ```{r}
@@ -376,6 +421,12 @@ gg_TOC <- ggarrange(gg_TOC1, gg_TOC2, gg_TOC_ratio, nrow=3, ncol=1, labels = c("
 fct_tukey(micro$TOC1, with_moisture = FALSE)
 fct_tukey(micro$TOC2, with_moisture = FALSE)
 fct_tukey(micro$TOC_ratio, with_moisture = FALSE)
+
+aov <- aov(data=micro, log(TOC1) ~ factor(Community) * factor(moist))
+summary(aov)
+
+aov <- aov(data=micro, log(TOC2) ~ factor(Community) * factor(moist))
+summary(aov)
 
 # ggsave("figures/gg_TOC.png", plot = gg_TOC, dpi=1200)
 ```
@@ -621,12 +672,7 @@ gg_AS_bacterial <- ggplot(data = AS_b) +
 ```
 
 ```{r}
-# gg_AS_fungal <- ggarrange(gg_AS_f_Cont_A4_A5 + rremove("ylab"), gg_PD_f + rremove("ylab"), ncol=1, nrow=2, labels = c("B"))
-# gg_AS_fungal <- annotate_figure(gg_AS_fungal, left = text_grob(expression(paste("Fungal Amino Sugars (soil g"^"-1",")")), rot = 90, vjust = 1, size = 12))
-# gg_AS_total <- ggarrange(gg_AS_Cont_A4_A5 + rremove("ylab"), gg_PD + rremove("ylab"), ncol=1, nrow=2, labels = c("C"), common.legend = TRUE, legend = "bottom")
-# gg_AS_total <- annotate_figure(gg_AS_total, left = text_grob(expression(paste("Total Amino Sugars (soil g"^"-1",")")), rot = 90, vjust = 1, size = 12))
-
-gg_AS_PD_b <- ggarrange(gg_AS_bacterial + rremove("ylab"), gg_PD_b + rremove("ylab"), ncol=1, nrow=2, labels = c("A", "B"), common.legend = TRUE, legend = "bottom")
+gg_AS_PD_b <- ggarrange(gg_AS_bacterial + rremove("ylab"), gg_PD_b + rremove("ylab"), ncol=1, nrow=2, common.legend = TRUE, legend = "bottom")
 gg_AS_PD_b <- annotate_figure(gg_AS_PD_b, left = text_grob(expression(paste("Bacterial Amino Sugars (soil g"^"-1",")")), rot = 90, vjust = 1, size = 12))
 ```
 
@@ -689,6 +735,8 @@ fct_boxplot(y_of_choice = micro$DOC_OD, y_label = expression(paste("DOC (measure
 
 fct_tukey(micro$DOC_OD, with_moisture=FALSE)
 
+aov <- aov(data=micro, log(DOC_OD) ~ factor(Community) * factor(moist))
+summary(aov)
 ```
 
 remaining glc
@@ -696,6 +744,9 @@ remaining glc
 fct_boxplot(y_of_choice = micro$remaining_glc_C_mg, y_label = expression(paste("remaining glc mg")), ymax = NA, x_label = "Community", with_moisture=FALSE, y_log=FALSE, desired_ticks=NA)
 
 fct_tukey(micro$remaining_glc_C_mg, with_moisture=FALSE)
+
+aov <- aov(data=micro, log(remaining_glc_C_mg) ~ factor(Community) * factor(moist))
+summary(aov)
 ```
 
 
